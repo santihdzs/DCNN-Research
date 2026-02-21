@@ -8,6 +8,7 @@ dependencies = [
     "torch>=2.0.0",
     "torchvision>=0.15.0",
     "numpy>=1.24.0",
+    "torchattacks>=3.5.0",
 ]
 
 [project.optional-dependencies]
@@ -21,5 +22,12 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.uv]
-dev-dependencies = []
+[project.scripts]
+benchmark = "src.pipeline.benchmark:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
