@@ -32,22 +32,22 @@ from utils.data import get_mnist_loaders
 ATTACK_CONFIGS = {
     "FGSM": {
         "class": "FGSM",
-        "kwargs": {"eps": 0.3},
+        "kwargs": {"eps": 0.4},
         "description": "Fast Gradient Sign Method (L∞)"
     },
     "BIM": {
         "class": "BIM", 
-        "kwargs": {"eps": 0.3, "alpha": 1/255, "steps": 10},
+        "kwargs": {"eps": 0.3, "alpha": 1/255, "steps": 40},
         "description": "Basic Iterative Method (L∞)"
     },
     "JSMA": {
         "class": "JSMA",
-        "kwargs": {"theta": 1.0, "gamma": 0.1},
+        "kwargs": {"theta": 1.0, "gamma": 0.2},
         "description": "Jacobian-based Saliency Map Attack (L0)"
     },
     "CW": {
         "class": "CW",
-        "kwargs": {"c": 1e-4, "kappa": 0, "steps": 20, "lr": 0.01},
+        "kwargs": {"c": 1e-4, "kappa": 0, "steps": 100, "lr": 0.01},
         "description": "Carlini & Wagner (L2)"
     }
 }
@@ -253,7 +253,7 @@ def run_benchmark(epochs: int = 3, device: str = "cpu", train: bool = True,
     print("BENCHMARK RESULTS")
     print("=" * 50)
     print(f"{'Test':<15} {'Accuracy':>10} {'Drop':>10}")
-    print("-" * 35)
+    print("-" * 37)
     print(f"{'Clean':<15} {results['clean']:>9.2f}% {'--':>10}")
     for attack_name, metrics in results["attacks"].items():
         print(f"{attack_name:<15} {metrics['accuracy']:>9.2f}% {metrics['drop']:>9.2f}%")

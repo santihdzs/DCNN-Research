@@ -78,8 +78,8 @@ The project is organized as a pipeline:
 ## Current Status
 
 - Basic MNIST CNN model implemented
-- Training and testing pipelines in place
-- Next: Implement adversarial attack testing (FGSM, PGD, etc.)
+- Training pipelines in place
+- Adversarial Attack testing pipelines in place (FGSM, BIM, JSMA, CW)
 
 ## Requirements
 
