@@ -34,6 +34,55 @@ uv pip install -e .
 
 ## Usage
 
+### Quick Start
+
+```bash
+# Install dependencies
+uv sync
+
+# Run full benchmark (train + test all attacks)
+uv run python -m src.pipeline.benchmark
+```
+
+### Benchmark Commands
+
+```bash
+# Run benchmark with existing model (skip training)
+uv run python -m src.pipeline.benchmark --no-train
+
+# Run with specific number of epochs
+uv run python -m src.pipeline.benchmark --epochs 5
+
+# Run only fast attacks (FGSM + BIM, skip slow JSMA/CW)
+uv run python -m src.pipeline.benchmark --no-train --fast
+
+# Clear cached adversarial data and regenerate
+uv run python -m src.pipeline.benchmark --no-train --clear-cache
+
+# Force CPU (instead of auto-detecting CUDA)
+uv run python -m src.pipeline.benchmark --device cpu
+```
+
+### Flags
+
+| Flag | Description |
+|------|-------------|
+| `--no-train` | Skip training, use existing model in `checkpoints/` |
+| `--epochs N` | Number of training epochs (default: 3) |
+| `--fast` | Only run FGSM and BIM attacks |
+| `--clear-cache` | Delete cached adversarial data and regenerate |
+| `--device cpu` | Force CPU (auto-detects CUDA by default) |
+
+### Benchmark Output
+
+The benchmark outputs:
+- Clean test accuracy
+- Accuracy for each attack (FGSM, BIM, JSMA, CW)
+- Drop from clean accuracy
+- Results saved to `results/benchmark_TIMESTAMP.json`
+
+Cached adversarial data is stored in `data/adversarial/` for faster future runs.
+
 ### Training
 
 ```python
