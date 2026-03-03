@@ -14,9 +14,10 @@ DCNN-Research/
 │   ├── models/         # Model architectures
 │   ├── pipeline/       # Training & testing pipelines
 │   └── utils/          # Data loading & utilities
-├── data/               # MNIST and other datasets
+├── data/               # MNIST and adversarial datasets
 ├── checkpoints/        # Saved model checkpoints
 ├── results/            # Evaluation results
+├── run_config.json     # Benchmark configuration
 └── README.md
 ```
 
@@ -27,9 +28,6 @@ This project uses [uv](https://github.com/astral-sh/uv) for dependency managemen
 ```bash
 # Install dependencies
 uv sync
-
-# Install in editable mode for development
-uv pip install -e .
 ```
 
 ## Usage
@@ -37,9 +35,6 @@ uv pip install -e .
 ### Quick Start
 
 ```bash
-# Install dependencies
-uv sync
-
 # Run full benchmark (train + test all attacks)
 uv run python -m src.pipeline.benchmark
 ```
@@ -50,17 +45,51 @@ uv run python -m src.pipeline.benchmark
 # Run benchmark with existing model (skip training)
 uv run python -m src.pipeline.benchmark --no-train
 
-# Run with specific number of epochs
-uv run python -m src.pipeline.benchmark --epochs 5
-
 # Run only fast attacks (FGSM + BIM, skip slow JSMA/CW)
 uv run python -m src.pipeline.benchmark --no-train --fast
 
 # Clear cached adversarial data and regenerate
-uv run python -m src.pipeline.benchmark --no-train --clear-cache
+uv run python -m src.pipeline.benchmark --clear-cache
 
-# Force CPU (instead of auto-detecting CUDA)
+# Force CPU
 uv run python -m src.pipeline.benchmark --device cpu
+```
+
+### Advanced Options
+
+#### Configuration File
+
+All benchmark options can be set in `run_config.json`:
+
+```json
+{
+  "deterministic": false,
+  "seed": 42,
+  "multi_seed": false,
+  "num_seeds": 3,
+  "epsilon_sweep": false,
+  "epsilon_values": [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4],
+  "per_class": false,
+  "confusion_matrices": false,
+  "runtime_benchmark": true,
+  "confidence_analysis": false
+}
+```
+
+#### CLI Flags
+
+```bash
+# Reproducibility
+uv run python -m src.pipeline.benchmark --seed 42 --deterministic
+
+# Evaluation features
+uv run python -m src.pipeline.benchmark --epsilon-sweep    # Run at multiple epsilon values
+uv run python -m src.pipeline.benchmark --per-class        # Per-class robustness metrics
+uv run python -m src.pipeline.benchmark --confidence-analysis  # Confidence drop analysis
+
+# Override config settings
+uv run python -m src.pipeline.benchmark --config custom_config.json
+uv run python -m src.pipeline.benchmark --deterministic --per-class
 ```
 
 ### Flags
@@ -72,69 +101,90 @@ uv run python -m src.pipeline.benchmark --device cpu
 | `--fast` | Only run FGSM and BIM attacks |
 | `--clear-cache` | Delete cached adversarial data and regenerate |
 | `--device cpu` | Force CPU (auto-detects CUDA by default) |
+| `--seed N` | Set random seed (overrides config) |
+| `--deterministic` | Enable deterministic mode for reproducibility |
+| `--epsilon-sweep` | Run attacks at multiple epsilon values |
+| `--per-class` | Compute per-class robustness metrics |
+| `--confidence-analysis` | Compute confidence drop metrics |
+| `--runtime-benchmark` | Measure attack runtime |
+| `--config FILE` | Path to config JSON file |
 
 ### Benchmark Output
 
-The benchmark outputs:
-- Clean test accuracy
-- Accuracy for each attack (FGSM, BIM, JSMA, CW)
-- Drop from clean accuracy
-- Results saved to `results/benchmark_TIMESTAMP.json`
+The benchmark outputs JSON files with comprehensive metrics:
 
-Cached adversarial data is stored in `data/adversarial/` for faster future runs.
+```json
+{
+  "clean": 99.03,
+  "attacks": {
+    "FGSM": {
+      "accuracy": 97.31,
+      "drop": 1.72,
+      "metrics": {
+        "clean_accuracy": 99.03,
+        "adversarial_accuracy": 97.31,
+        "attack_success_rate": 0.017
+      },
+      "perturbation_stats": {
+        "linf_mean": 1.82,
+        "l2_mean": 19.09
+      },
+      "confidence_analysis": {
+        "clean_true_conf_mean": 0.992,
+        "adv_true_conf_mean": 0.800,
+        "mean_conf_drop": 0.192
+      },
+      "per_class_metrics": {
+        "9": {"clean_acc": 0.967, "adv_acc": 0.897, "asr": 0.073}
+      }
+    }
+  },
+  "execution": {
+    "timestamp": "2026-03-03T06:00:00",
+    "device": "cpu",
+    "batch_size": 128,
+    "num_samples_evaluated": 10000
+  },
+  "versioning": {
+    "git_commit": "abc123..."
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic": false
+  }
+}
+```
 
-### Training
+### Cached Data
+
+Adversarial examples are cached in `data/adversarial/` for faster runs:
+- `FGSM_test.pt`, `BIM_test.pt`, `JSMA_test.pt`, `CW_test.pt`
+- Epsilon sweep: `FGSM_eps0.1_test.pt`, etc.
+
+## Metrics Explained
+
+- **ASR (Attack Success Rate)**: % of originally-correct samples that become misclassified
+- **Clean Accuracy**: Accuracy on unmodified test data
+- **Adversarial Accuracy**: Accuracy on attacked test data
+- **Perturbation Stats**: L∞ and L2 norms of adversarial perturbations
+- **Confidence Drop**: How much the model's confidence decreases under attack
+
+## Training
 
 ```python
 from src.models import get_model
-from src.pipeline import get_optimizer, get_criterion, train_epoch
 from src.utils import get_mnist_loaders
 
-# Load data
 train_loader, test_loader = get_mnist_loaders(batch_size=64)
-
-# Create model
-model = get_model(device="cuda" if torch.cuda.is_available() else "cpu")
-
-# Training loop
-optimizer = get_optimizer(model, optimizer="adam", lr=1e-3)
-criterion = get_criterion()
-
-for epoch in range(10):
-    loss, accuracy = train_epoch(model, train_loader, criterion, optimizer)
-    print(f"Epoch {epoch}: Loss={loss:.4f}, Accuracy={accuracy:.2f}%")
+model = get_model(device="cpu")
 ```
-
-### Testing
-
-```python
-from src.pipeline import run_full_evaluation
-
-# Run full evaluation suite
-results = run_full_evaluation(model, test_loader)
-print(f"Test Accuracy: {results['standard']['accuracy']:.2f}%")
-```
-
-## Pipeline
-
-The project is organized as a pipeline:
-
-1. **Models** (`src/models/`) — Model architectures for experimentation
-2. **Training** (`src/pipeline/train.py`) — Training loops, checkpoints, optimization
-3. **Testing** (`src/pipeline/test.py`) — Automated evaluation, metrics, result tracking
-4. **Saved Models/Stats** — Checkpoints and results saved for analysis
-
-## Current Status
-
-- Basic MNIST CNN model implemented
-- Training pipelines in place
-- Adversarial Attack testing pipelines in place (FGSM, BIM, JSMA, CW)
 
 ## Requirements
 
 - Python 3.9+
 - PyTorch
 - torchvision
+- torchattacks
 - See `pyproject.toml` for full dependencies
 
 ## Author
