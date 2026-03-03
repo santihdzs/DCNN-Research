@@ -1,0 +1,12 @@
+{
+  "deterministic": false,
+  "seed": 42,
+  "multi_seed": false,
+  "num_seeds": 3,
+  "epsilon_sweep": false,
+  "epsilon_values": [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4],
+  "per_class": false,
+  "confusion_matrices": false,
+  "runtime_benchmark": true,
+  "confidence_analysis": false
+}

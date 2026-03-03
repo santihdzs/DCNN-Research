@@ -58,3 +58,6 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# Exception for benchmark config
+!run_config.json
